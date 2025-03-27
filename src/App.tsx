@@ -12,6 +12,7 @@ import Dashboard from "./pages/Dashboard";
 import Forum from "./pages/Forum";
 import Chat from "./pages/Chat";
 import Documents from "./pages/Documents";
+import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 import MainLayout from "./components/layout/MainLayout";
 
@@ -36,6 +37,7 @@ const App = () => (
                 <Route path="/forum" element={<Forum />} />
                 <Route path="/chat" element={<Chat />} />
                 <Route path="/documents" element={<Documents />} />
+                <Route path="/settings" element={<Settings />} />
               </Route>
               
               {/* Catch-all route */}
