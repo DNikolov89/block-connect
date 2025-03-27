@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Bell, Menu, Search, User, X } from 'lucide-react';
@@ -28,7 +27,7 @@ const Navbar: React.FC<{ toggleSidebar: () => void }> = ({ toggleSidebar }) => {
   };
 
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 h-16 glassmorphism border-b border-border/40 px-4 flex items-center justify-between">
+    <nav className="fixed top-0 left-0 right-0 z-50 h-16 bg-background/80 dark:bg-background/80 backdrop-blur-sm border-b border-border/40 px-4 flex items-center justify-between">
       <div className="flex items-center space-x-4">
         {isAuthenticated && (
           <Button 

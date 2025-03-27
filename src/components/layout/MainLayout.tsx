@@ -1,9 +1,9 @@
-
 import React, { useState, useEffect } from 'react';
 import { Outlet, Navigate, useLocation } from 'react-router-dom';
 import Navbar from './Navbar';
 import Sidebar from './Sidebar';
 import { useAuth } from '../../contexts/AuthContext';
+import { cn } from '../../lib/utils';
 
 const MainLayout = () => {
   const { isAuthenticated, loading } = useAuth();
@@ -63,7 +63,11 @@ const MainLayout = () => {
       <Navbar toggleSidebar={toggleSidebar} />
       <div className="flex flex-1 pt-16">
         <Sidebar isOpen={sidebarOpen} toggleSidebar={toggleSidebar} />
-        <main className={`flex-1 transition-all duration-300 p-6 ${sidebarOpen ? 'lg:ml-64' : ''}`}>
+        <main className={cn(
+          "flex-1 transition-all duration-300 p-6",
+          "lg:ml-16", // Base margin for collapsed state
+          sidebarOpen && "lg:ml-64" // Additional margin when expanded
+        )}>
           <Outlet />
         </main>
       </div>

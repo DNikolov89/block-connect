@@ -2,12 +2,26 @@ import React from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
+import { ThemeToggle } from '@/components/ThemeToggle';
 
 const Index = () => {
   const { isAuthenticated, loading } = useAuth();
   
   return (
     <div className="min-h-screen bg-background">
+      {/* Header */}
+      <header className="fixed top-0 left-0 right-0 z-50 bg-background/80 dark:bg-background/80 backdrop-blur-sm border-b border-border">
+        <div className="container mx-auto px-4 h-16 flex items-center justify-between">
+          <div className="flex items-center">
+            <div className="bg-primary rounded-md h-8 w-8 flex items-center justify-center text-white font-bold mr-2">
+              B
+            </div>
+            <span className="text-xl font-semibold">Block-connect</span>
+          </div>
+          <ThemeToggle />
+        </div>
+      </header>
+
       {/* Hero Section */}
       <section className="relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-background z-0"></div>
