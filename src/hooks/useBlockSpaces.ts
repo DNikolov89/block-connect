@@ -1,90 +1,142 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { blockSpacesApi } from '@/api/blockSpaces';
-import { toast } from 'sonner';
-import type { CreateBlockSpaceInput, UpdateBlockSpaceInput } from '@/types';
+import { useState, useEffect } from 'react';
+import { supabase } from '@/lib/supabase';
+import { Database } from '@/types/supabase';
+import { useAuth } from '@/contexts/AuthContext';
 
-export const useBlockSpaces = () => {
-  const queryClient = useQueryClient();
+type BlockSpace = Database['public']['Tables']['block_spaces']['Row'];
 
-  const { data: blockSpaces, isLoading, error } = useQuery({
-    queryKey: ['blockSpaces'],
-    queryFn: blockSpacesApi.getAll,
-  });
+export function useBlockSpaces() {
+  const [blockSpaces, setBlockSpaces] = useState<BlockSpace[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const { user } = useAuth();
 
-  const createMutation = useMutation({
-    mutationFn: ({ input, userId }: { input: CreateBlockSpaceInput; userId: string }) =>
-      blockSpacesApi.create(input, userId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['blockSpaces'] });
-      toast.success('Block space created successfully');
-    },
-    onError: (error: Error) => {
-      toast.error(`Failed to create block space: ${error.message}`);
-    },
-  });
+  useEffect(() => {
+    if (!user) return;
+    
+    const fetchBlockSpaces = async () => {
+      try {
+        setLoading(true);
+        setError(null);
 
-  const updateMutation = useMutation({
-    mutationFn: ({ id, input }: { id: string; input: UpdateBlockSpaceInput }) =>
-      blockSpacesApi.update(id, input),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['blockSpaces'] });
-      toast.success('Block space updated successfully');
-    },
-    onError: (error: Error) => {
-      toast.error(`Failed to update block space: ${error.message}`);
-    },
-  });
+        let query = supabase
+          .from('block_spaces')
+          .select('*');
 
-  const deleteMutation = useMutation({
-    mutationFn: blockSpacesApi.delete,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['blockSpaces'] });
-      toast.success('Block space deleted successfully');
-    },
-    onError: (error: Error) => {
-      toast.error(`Failed to delete block space: ${error.message}`);
-    },
-  });
+        // If not admin, only fetch relevant block spaces
+        if (user.role !== 'admin') {
+          query = query.or(`owner_id.eq.${user.id},id.eq.${user.block_space_id}`);
+        }
 
-  const createApplicationMutation = useMutation({
-    mutationFn: ({ userId, blockSpaceId }: { userId: string; blockSpaceId: string }) =>
-      blockSpacesApi.createApplication(userId, blockSpaceId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['blockSpaces'] });
-      toast.success('Application submitted successfully');
-    },
-    onError: (error: Error) => {
-      toast.error(`Failed to submit application: ${error.message}`);
-    },
-  });
+        const { data, error } = await query;
 
-  const updateApplicationStatusMutation = useMutation({
-    mutationFn: ({ 
-      applicationId, 
-      status, 
-      notes 
-    }: { 
-      applicationId: string; 
-      status: 'pending' | 'approved' | 'rejected';
-      notes?: string;
-    }) => blockSpacesApi.updateApplicationStatus(applicationId, status, notes),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['blockSpaces'] });
-      toast.success('Application status updated successfully');
-    },
-    onError: (error: Error) => {
-      toast.error(`Failed to update application status: ${error.message}`);
-    },
-  });
+        if (error) throw error;
+        setBlockSpaces(data || []);
+      } catch (err) {
+        console.error('Error fetching block spaces:', err);
+        setError(err instanceof Error ? err.message : 'An error occurred');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchBlockSpaces();
+
+    // Subscribe to changes
+    const subscription = supabase
+      .channel('block_spaces_changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'block_spaces' }, 
+        (payload) => {
+          // Update local state based on the change
+          if (payload.eventType === 'INSERT') {
+            setBlockSpaces(prev => [...prev, payload.new as BlockSpace]);
+          } else if (payload.eventType === 'DELETE') {
+            setBlockSpaces(prev => prev.filter(bs => bs.id !== payload.old.id));
+          } else if (payload.eventType === 'UPDATE') {
+            setBlockSpaces(prev => prev.map(bs => 
+              bs.id === payload.new.id ? payload.new as BlockSpace : bs
+            ));
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [user]);
+
+  const createBlockSpace = async (data: {
+    name: string;
+    description?: string;
+    address: string;
+  }) => {
+    try {
+      setError(null);
+      const { data: newBlockSpace, error } = await supabase
+        .from('block_spaces')
+        .insert([
+          {
+            ...data,
+            owner_id: user?.id,
+          },
+        ])
+        .select()
+        .single();
+
+      if (error) throw error;
+      return newBlockSpace;
+    } catch (err) {
+      console.error('Error creating block space:', err);
+      setError(err instanceof Error ? err.message : 'An error occurred');
+      throw err;
+    }
+  };
+
+  const updateBlockSpace = async (
+    id: string,
+    data: Partial<Omit<BlockSpace, 'id' | 'created_at' | 'owner_id'>>
+  ) => {
+    try {
+      setError(null);
+      const { data: updatedBlockSpace, error } = await supabase
+        .from('block_spaces')
+        .update(data)
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return updatedBlockSpace;
+    } catch (err) {
+      console.error('Error updating block space:', err);
+      setError(err instanceof Error ? err.message : 'An error occurred');
+      throw err;
+    }
+  };
+
+  const deleteBlockSpace = async (id: string) => {
+    try {
+      setError(null);
+      const { error } = await supabase
+        .from('block_spaces')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+    } catch (err) {
+      console.error('Error deleting block space:', err);
+      setError(err instanceof Error ? err.message : 'An error occurred');
+      throw err;
+    }
+  };
 
   return {
-    blockSpaces: blockSpaces?.data || [],
-    isLoading,
+    blockSpaces,
+    loading,
     error,
-    createBlockSpace: createMutation.mutate,
-    updateBlockSpace: updateMutation.mutate,
-    deleteBlockSpace: deleteMutation.mutate,
-    createApplication: createApplicationMutation.mutate,
-    updateApplicationStatus: updateApplicationStatusMutation.mutate,
+    createBlockSpace,
+    updateBlockSpace,
+    deleteBlockSpace,
   };
-}; 
+} 

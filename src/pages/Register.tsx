@@ -1,442 +1,243 @@
 import { useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
-import { useAuth } from '@/contexts/AuthContext';
+import { Link } from 'react-router-dom';
+import { useRegistration } from '@/hooks/useRegistration';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-  FormDescription,
-} from '@/components/ui/form';
-import { Separator } from '@/components/ui/separator';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { useForm } from 'react-hook-form';
-import * as z from 'zod';
-import { Loader2 } from 'lucide-react';
+import { Label } from '@/components/ui/label';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
-import { useBlockSpaces } from '@/hooks/useBlockSpaces';
-
-// Schema for block space creation (admin + block space)
-const blockSpaceCreationSchema = z.object({
-  // Admin account details
-  adminName: z.string().min(1, 'Name is required'),
-  adminEmail: z.string().email('Invalid email address'),
-  adminPassword: z.string().min(6, 'Password must be at least 6 characters'),
-  confirmPassword: z.string(),
-  // Block space details
-  blockSpaceName: z.string().min(1, 'Block space name is required'),
-  address: z.string().min(1, 'Address is required'),
-  totalFlats: z.number().min(1, 'Must have at least 1 flat'),
-  totalFloors: z.number().min(1, 'Must have at least 1 floor'),
-  description: z.string().optional(),
-}).refine((data) => data.adminPassword === data.confirmPassword, {
-  message: "Passwords don't match",
-  path: ["confirmPassword"],
-});
-
-// Schema for regular user registration
-const userRegistrationSchema = z.object({
-  name: z.string().min(1, 'Name is required'),
-  email: z.string().email('Invalid email address'),
-  password: z.string().min(6, 'Password must be at least 6 characters'),
-  confirmPassword: z.string(),
-  role: z.enum(['owner', 'tenant']),
-}).refine((data) => data.password === data.confirmPassword, {
-  message: "Passwords don't match",
-  path: ["confirmPassword"],
-});
-
-type BlockSpaceCreationValues = z.infer<typeof blockSpaceCreationSchema>;
-type UserRegistrationValues = z.infer<typeof userRegistrationSchema>;
 
 export default function Register() {
-  const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
-  const { register } = useAuth();
-  const { createBlockSpace } = useBlockSpaces();
-  const [isLoading, setIsLoading] = useState(false);
+  const { register, registerWithBlockSpace, loading, error } = useRegistration();
+  const [activeTab, setActiveTab] = useState<'join' | 'create'>('join');
 
-  // Check if user is creating a block space
-  const isBlockSpaceCreation = searchParams.get('role') === 'admin';
+  // Join existing block space form state
+  const [joinEmail, setJoinEmail] = useState('');
+  const [joinPassword, setJoinPassword] = useState('');
+  const [joinFullName, setJoinFullName] = useState('');
+  const [joinPhone, setJoinPhone] = useState('');
+  const [joinBlockSpaceId, setJoinBlockSpaceId] = useState('');
 
-  const blockSpaceForm = useForm<BlockSpaceCreationValues>({
-    resolver: zodResolver(blockSpaceCreationSchema),
-    defaultValues: {
-      adminName: '',
-      adminEmail: '',
-      adminPassword: '',
-      confirmPassword: '',
-      blockSpaceName: '',
-      address: '',
-      totalFlats: 1,
-      totalFloors: 1,
-      description: '',
-    },
-  });
+  // Create new block space form state
+  const [createEmail, setCreateEmail] = useState('');
+  const [createPassword, setCreatePassword] = useState('');
+  const [createFullName, setCreateFullName] = useState('');
+  const [createPhone, setCreatePhone] = useState('');
+  const [blockSpaceName, setBlockSpaceName] = useState('');
+  const [blockSpaceAddress, setBlockSpaceAddress] = useState('');
+  const [blockSpaceDescription, setBlockSpaceDescription] = useState('');
 
-  const userForm = useForm<UserRegistrationValues>({
-    resolver: zodResolver(userRegistrationSchema),
-    defaultValues: {
-      name: '',
-      email: '',
-      password: '',
-      confirmPassword: '',
-      role: 'tenant',
-    },
-  });
-
-  const handleBlockSpaceCreation = async (values: BlockSpaceCreationValues) => {
+  const handleJoinSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
     try {
-      setIsLoading(true);
-      // First, register the admin user
-      const adminResult = await register({
-        name: values.adminName,
-        email: values.adminEmail,
-        password: values.adminPassword,
-        role: 'admin',
+      await register({
+        email: joinEmail,
+        password: joinPassword,
+        fullName: joinFullName,
+        phone: joinPhone,
+        blockSpaceId: joinBlockSpaceId,
+        role: 'tenant',
       });
-
-      if (adminResult.data) {
-        // Then create the block space
-        const blockSpaceResult = await createBlockSpace({
-          input: {
-            name: values.blockSpaceName,
-            address: values.address,
-            total_flats: values.totalFlats,
-            total_floors: values.totalFloors,
-            description: values.description,
-          },
-          userId: adminResult.data.id,
-        });
-
-        if (blockSpaceResult.data) {
-          toast.success('Block space created successfully');
-          navigate('/login');
-        }
-      }
-    } catch (error) {
-      toast.error('Failed to create block space');
-    } finally {
-      setIsLoading(false);
+      toast.success('Registration successful! Please check your email to verify your account.');
+    } catch (err) {
+      toast.error(error || 'Registration failed. Please try again.');
     }
   };
 
-  const handleUserRegistration = async (values: UserRegistrationValues) => {
+  const handleCreateSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
     try {
-      setIsLoading(true);
-      const result = await register(values);
-      if (result.data) {
-        toast.success('Registration successful. You can now apply to join a block space.');
-        navigate('/login');
-      }
-    } catch (error) {
-      toast.error('Failed to register');
-    } finally {
-      setIsLoading(false);
+      await registerWithBlockSpace(
+        {
+          email: createEmail,
+          password: createPassword,
+          fullName: createFullName,
+          phone: createPhone,
+        },
+        {
+          name: blockSpaceName,
+          address: blockSpaceAddress,
+          description: blockSpaceDescription,
+        }
+      );
+      toast.success('Registration successful! Please check your email to verify your account.');
+    } catch (err) {
+      toast.error(error || 'Registration failed. Please try again.');
     }
   };
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="h-8 w-8 animate-spin" />
-      </div>
-    );
-  }
+  return (
+    <div className="container mx-auto max-w-md py-8">
+      <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'join' | 'create')}>
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="join">Join Block Space</TabsTrigger>
+          <TabsTrigger value="create">Create Block Space</TabsTrigger>
+        </TabsList>
 
-  if (isBlockSpaceCreation) {
-    return (
-      <div className="container max-w-lg mx-auto py-8">
-        <div className="space-y-6">
-          <div>
-            <h1 className="text-3xl font-bold">Create Block Space</h1>
-            <p className="text-muted-foreground">
-              Set up your block space and create your administrator account
-            </p>
-          </div>
-
-          <Form {...blockSpaceForm}>
-            <form onSubmit={blockSpaceForm.handleSubmit(handleBlockSpaceCreation)} className="space-y-6">
-              {/* Administrator Account Section */}
-              <div className="space-y-4">
-                <h2 className="text-xl font-semibold">Administrator Account</h2>
-                <FormField
-                  control={blockSpaceForm.control}
-                  name="adminName"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Name</FormLabel>
-                      <FormControl>
-                        <Input {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={blockSpaceForm.control}
-                  name="adminEmail"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Email</FormLabel>
-                      <FormControl>
-                        <Input type="email" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={blockSpaceForm.control}
-                  name="adminPassword"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Password</FormLabel>
-                      <FormControl>
-                        <Input type="password" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={blockSpaceForm.control}
-                  name="confirmPassword"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Confirm Password</FormLabel>
-                      <FormControl>
-                        <Input type="password" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-
-              <Separator />
-
-              {/* Block Space Details Section */}
-              <div className="space-y-4">
-                <h2 className="text-xl font-semibold">Block Space Details</h2>
-                <FormField
-                  control={blockSpaceForm.control}
-                  name="blockSpaceName"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Block Space Name</FormLabel>
-                      <FormControl>
-                        <Input {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={blockSpaceForm.control}
-                  name="address"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Address</FormLabel>
-                      <FormControl>
-                        <Input {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <div className="grid grid-cols-2 gap-4">
-                  <FormField
-                    control={blockSpaceForm.control}
-                    name="totalFlats"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Total Flats</FormLabel>
-                        <FormControl>
-                          <Input
-                            type="number"
-                            {...field}
-                            onChange={(e) => field.onChange(parseInt(e.target.value))}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={blockSpaceForm.control}
-                    name="totalFloors"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Total Floors</FormLabel>
-                        <FormControl>
-                          <Input
-                            type="number"
-                            {...field}
-                            onChange={(e) => field.onChange(parseInt(e.target.value))}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
+        <TabsContent value="join">
+          <Card>
+            <CardHeader>
+              <CardTitle>Join a Block Space</CardTitle>
+              <CardDescription>
+                Enter your details to join an existing block space
+              </CardDescription>
+            </CardHeader>
+            <form onSubmit={handleJoinSubmit}>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="join-email">Email</Label>
+                  <Input
+                    id="join-email"
+                    type="email"
+                    value={joinEmail}
+                    onChange={(e) => setJoinEmail(e.target.value)}
+                    required
                   />
                 </div>
-
-                <FormField
-                  control={blockSpaceForm.control}
-                  name="description"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Description (Optional)</FormLabel>
-                      <FormControl>
-                        <Input {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-
-              <Button type="submit" className="w-full">
-                Create Block Space
-              </Button>
+                <div className="space-y-2">
+                  <Label htmlFor="join-password">Password</Label>
+                  <Input
+                    id="join-password"
+                    type="password"
+                    value={joinPassword}
+                    onChange={(e) => setJoinPassword(e.target.value)}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="join-full-name">Full Name</Label>
+                  <Input
+                    id="join-full-name"
+                    value={joinFullName}
+                    onChange={(e) => setJoinFullName(e.target.value)}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="join-phone">Phone (optional)</Label>
+                  <Input
+                    id="join-phone"
+                    type="tel"
+                    value={joinPhone}
+                    onChange={(e) => setJoinPhone(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="join-block-space">Block Space ID</Label>
+                  <Input
+                    id="join-block-space"
+                    value={joinBlockSpaceId}
+                    onChange={(e) => setJoinBlockSpaceId(e.target.value)}
+                    required
+                  />
+                </div>
+              </CardContent>
+              <CardFooter className="flex flex-col space-y-4">
+                <Button type="submit" className="w-full" disabled={loading}>
+                  {loading ? 'Registering...' : 'Register'}
+                </Button>
+                <p className="text-sm text-center text-muted-foreground">
+                  Already have an account?{' '}
+                  <Link to="/login" className="text-primary hover:underline">
+                    Sign in
+                  </Link>
+                </p>
+              </CardFooter>
             </form>
-          </Form>
+          </Card>
+        </TabsContent>
 
-          <div className="text-center text-sm">
-            Already managing a block space?{' '}
-            <Button
-              variant="link"
-              className="p-0"
-              onClick={() => navigate('/login')}
-            >
-              Login
-            </Button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // Regular user registration form
-  return (
-    <div className="container max-w-lg mx-auto py-8">
-      <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold">Create an account</h1>
-          <p className="text-muted-foreground">
-            Join your block's community as an owner or tenant
-          </p>
-        </div>
-
-        <Form {...userForm}>
-          <form onSubmit={userForm.handleSubmit(handleUserRegistration)} className="space-y-4">
-            <FormField
-              control={userForm.control}
-              name="name"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Name</FormLabel>
-                  <FormControl>
-                    <Input {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={userForm.control}
-              name="email"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Email</FormLabel>
-                  <FormControl>
-                    <Input type="email" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={userForm.control}
-              name="password"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Password</FormLabel>
-                  <FormControl>
-                    <Input type="password" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={userForm.control}
-              name="confirmPassword"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Confirm Password</FormLabel>
-                  <FormControl>
-                    <Input type="password" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={userForm.control}
-              name="role"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Role</FormLabel>
-                  <FormControl>
-                    <select
-                      {...field}
-                      className="w-full rounded-md border border-input bg-background px-3 py-2"
-                    >
-                      <option value="tenant">Tenant</option>
-                      <option value="owner">Owner</option>
-                    </select>
-                  </FormControl>
-                  <FormDescription>
-                    Select your role in the block space. You'll need to be approved by an administrator.
-                  </FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <Button type="submit" className="w-full">
-              Register
-            </Button>
-          </form>
-        </Form>
-
-        <div className="text-center text-sm">
-          Already have an account?{' '}
-          <Button
-            variant="link"
-            className="p-0"
-            onClick={() => navigate('/login')}
-          >
-            Login
-          </Button>
-        </div>
-      </div>
+        <TabsContent value="create">
+          <Card>
+            <CardHeader>
+              <CardTitle>Create a Block Space</CardTitle>
+              <CardDescription>
+                Set up your own block space and become an owner
+              </CardDescription>
+            </CardHeader>
+            <form onSubmit={handleCreateSubmit}>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="create-email">Email</Label>
+                  <Input
+                    id="create-email"
+                    type="email"
+                    value={createEmail}
+                    onChange={(e) => setCreateEmail(e.target.value)}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="create-password">Password</Label>
+                  <Input
+                    id="create-password"
+                    type="password"
+                    value={createPassword}
+                    onChange={(e) => setCreatePassword(e.target.value)}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="create-full-name">Full Name</Label>
+                  <Input
+                    id="create-full-name"
+                    value={createFullName}
+                    onChange={(e) => setCreateFullName(e.target.value)}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="create-phone">Phone (optional)</Label>
+                  <Input
+                    id="create-phone"
+                    type="tel"
+                    value={createPhone}
+                    onChange={(e) => setCreatePhone(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="block-space-name">Block Space Name</Label>
+                  <Input
+                    id="block-space-name"
+                    value={blockSpaceName}
+                    onChange={(e) => setBlockSpaceName(e.target.value)}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="block-space-address">Block Space Address</Label>
+                  <Input
+                    id="block-space-address"
+                    value={blockSpaceAddress}
+                    onChange={(e) => setBlockSpaceAddress(e.target.value)}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="block-space-description">Description (optional)</Label>
+                  <Input
+                    id="block-space-description"
+                    value={blockSpaceDescription}
+                    onChange={(e) => setBlockSpaceDescription(e.target.value)}
+                  />
+                </div>
+              </CardContent>
+              <CardFooter className="flex flex-col space-y-4">
+                <Button type="submit" className="w-full" disabled={loading}>
+                  {loading ? 'Creating...' : 'Create Block Space'}
+                </Button>
+                <p className="text-sm text-center text-muted-foreground">
+                  Already have an account?{' '}
+                  <Link to="/login" className="text-primary hover:underline">
+                    Sign in
+                  </Link>
+                </p>
+              </CardFooter>
+            </form>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

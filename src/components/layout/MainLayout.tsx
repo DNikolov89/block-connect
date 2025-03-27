@@ -3,12 +3,15 @@ import { Outlet, Navigate, useLocation } from 'react-router-dom';
 import Navbar from './Navbar';
 import Sidebar from './Sidebar';
 import { useAuth } from '../../contexts/AuthContext';
+import { useTheme } from '@/contexts/ThemeContext';
 import { cn } from '../../lib/utils';
+import '@/styles/glass.css';
 
 const MainLayout = () => {
   const { isAuthenticated, loading } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const location = useLocation();
+  const { theme } = useTheme();
   
   // Close sidebar on mobile by default
   useEffect(() => {
@@ -59,16 +62,35 @@ const MainLayout = () => {
   }
   
   return (
-    <div className="min-h-screen flex flex-col bg-background">
+    <div className={cn(
+      'min-h-screen w-full bg-gradient-to-br',
+      theme === 'dark' 
+        ? 'from-gray-900 via-gray-800 to-gray-900' 
+        : 'from-gray-50 via-white to-gray-100'
+    )}>
+      <div className="fixed inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute -top-40 -right-40 w-80 h-80 rounded-full bg-purple-500/30 blur-3xl" />
+        <div className="absolute top-0 left-20 w-72 h-72 rounded-full bg-blue-500/20 blur-3xl" />
+        <div className="absolute bottom-40 right-20 w-64 h-64 rounded-full bg-indigo-500/20 blur-3xl" />
+      </div>
+      
       <Navbar toggleSidebar={toggleSidebar} />
-      <div className="flex flex-1 pt-16">
+      
+      <div className="flex relative z-10 pt-24 px-4">
         <Sidebar isOpen={sidebarOpen} toggleSidebar={toggleSidebar} />
         <main className={cn(
-          "flex-1 transition-all duration-300 p-6",
+          "flex-1 transition-all duration-300 pb-6",
           "lg:ml-16", // Base margin for collapsed state
           sidebarOpen && "lg:ml-64" // Additional margin when expanded
         )}>
-          <Outlet />
+          <div className={cn(
+            'mx-auto max-w-[1200px] rounded-2xl min-h-[calc(100vh-7rem)]',
+            theme === 'dark' ? 'glass-dark' : 'glass'
+          )}>
+            <div className="p-6">
+              <Outlet />
+            </div>
+          </div>
         </main>
       </div>
     </div>
