@@ -1,34 +1,87 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Link, useNavigate } from 'react-router-dom';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Building2, Users, MessageSquare, FileText, Plus } from 'lucide-react';
+import { Building2, Users, MessageSquare, FileText, Plus, ArrowRight } from 'lucide-react';
+import '@/styles/animations.css';
 
 const Index = () => {
   const { isAuthenticated, loading } = useAuth();
   const navigate = useNavigate();
+  const [showAnimations, setShowAnimations] = useState(false);
+  
+  useEffect(() => {
+    // Small delay to ensure the page is ready
+    const timer = setTimeout(() => {
+      setShowAnimations(true);
+    }, 100);
+    
+    return () => clearTimeout(timer);
+  }, []);
+
+  const renderLogo = () => (
+    <div className={`logo-container ${showAnimations ? 'animate' : ''}`}>
+      <div className="bg-primary rounded-md h-8 w-8 flex items-center justify-center text-white font-bold mr-2">
+        B
+      </div>
+      <span className="text-xl font-semibold">Block-connect</span>
+    </div>
+  );
+
+  const renderButtons = () => {
+    if (loading) {
+      return (
+        <Button size="lg" disabled className="w-full sm:w-auto">
+          <div className="shimmer w-24" />
+        </Button>
+      );
+    }
+
+    if (isAuthenticated) {
+      return (
+        <Link to="/dashboard">
+          <Button size="lg" className="w-full sm:w-auto group">
+            Go to Dashboard
+            <ArrowRight className="ml-2 group-hover:translate-x-1 transition-transform" />
+          </Button>
+        </Link>
+      );
+    }
+
+    return (
+      <div className="flex flex-col sm:flex-row gap-4 sm:gap-6">
+        <Link to="/register">
+          <Button size="lg" className="w-full sm:w-auto group">
+            Get Started
+            <ArrowRight className="ml-2 group-hover:translate-x-1 transition-transform" />
+          </Button>
+        </Link>
+        <Link to="/login">
+          <Button size="lg" variant="outline" className="w-full sm:w-auto">
+            I already have an account
+          </Button>
+        </Link>
+      </div>
+    );
+  };
   
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="fixed top-0 left-0 right-0 z-50 bg-background/80 dark:bg-background/80 backdrop-blur-sm border-b border-border">
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
-          <div className="flex items-center">
-            <div className="bg-primary rounded-md h-8 w-8 flex items-center justify-center text-white font-bold mr-2">
-              B
-            </div>
-            <span className="text-xl font-semibold">Block-connect</span>
-          </div>
-          <div className="flex items-center gap-4">
+          {renderLogo()}
+          <div className={`flex items-center gap-4 ${showAnimations ? 'animate-fade-in animate-delay-200' : ''}`}>
             {!loading && !isAuthenticated && (
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => navigate('/register?role=admin')}
+                className="group"
               >
-                <Plus className="h-4 w-4 mr-2" />
+                <Plus className="h-4 w-4 mr-2 group-hover:rotate-90 transition-transform duration-200" />
                 Create Block Space
               </Button>
             )}
@@ -38,129 +91,90 @@ const Index = () => {
       </header>
 
       {/* Hero Section */}
-      <section className="relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-background z-0"></div>
-        <div className="container mx-auto px-4 py-20 lg:py-32 relative z-10">
-          <div className="max-w-3xl mx-auto text-center">
-            <div className="bg-primary mx-auto rounded-2xl h-20 w-20 flex items-center justify-center text-white text-3xl font-bold mb-8 shadow-lg animate-float">
-              B
-            </div>
-            <h1 className="text-4xl md:text-6xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary to-primary/80 mb-6">
-              Welcome to Block-connect
+      <section className="pt-32 pb-16 relative overflow-hidden">
+        <div className="container mx-auto px-4 relative z-10">
+          <div className={`max-w-3xl mx-auto text-center ${showAnimations ? 'animate-fade-in' : ''}`}>
+            <h1 className="text-4xl md:text-6xl font-bold mb-6 bg-clip-text text-transparent bg-gradient-to-r from-primary to-primary/60">
+              Connect Your Residential Community
             </h1>
-            <p className="text-xl text-muted-foreground mb-8">
-              The digital hub for your residential community. Connect, communicate, and collaborate with neighbors and building management in one seamless platform.
+            <p className={`text-xl text-muted-foreground mb-8 ${showAnimations ? 'animate-fade-in animate-delay-100' : ''}`}>
+              A modern platform for managing residential blocks, fostering community engagement, and streamlining communication.
             </p>
-            <div className="flex flex-col sm:flex-row justify-center gap-4">
-              {loading ? (
-                <div className="w-full sm:w-auto">
-                  <Button size="lg" disabled className="w-full">
-                    Loading...
-                  </Button>
-                </div>
-              ) : isAuthenticated ? (
-                <Link to="/dashboard">
-                  <Button size="lg" className="w-full sm:w-auto">
-                    Go to Dashboard
-                  </Button>
-                </Link>
-              ) : (
-                <>
-                  <Link to="/register">
-                    <Button size="lg" className="w-full sm:w-auto">
-                      Get Started
-                    </Button>
-                  </Link>
-                  <Link to="/register?role=admin">
-                    <Button size="lg" variant="outline" className="w-full sm:w-auto">
-                      <Plus className="h-4 w-4 mr-2" />
-                      Create Block Space
-                    </Button>
-                  </Link>
-                </>
-              )}
+            <div className={`flex flex-col sm:flex-row justify-center ${showAnimations ? 'animate-fade-in animate-delay-200' : ''}`}>
+              <div className={`button-container ${showAnimations ? 'animate' : ''}`}>
+                {renderButtons()}
+              </div>
             </div>
           </div>
         </div>
+        
+        {/* Background decoration */}
+        <div className="absolute top-0 left-0 w-full h-full pointer-events-none">
+          <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-primary/5 rounded-full blur-3xl" />
+          <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-primary/10 rounded-full blur-3xl" />
+        </div>
       </section>
-      
+
       {/* Features Section */}
-      <section className="py-16 bg-muted/30">
+      <section className="py-16 relative">
         <div className="container mx-auto px-4">
-          <h2 className="text-3xl font-bold text-center mb-12">Everything you need in one place</h2>
-          <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {[
               {
-                title: "Community Dashboard",
-                description: "Stay updated with announcements and events from your building community and management.",
-                delay: 0
+                icon: Building2,
+                title: "Block Management",
+                description: "Efficiently manage your residential block with digital tools.",
+                delay: "0",
               },
               {
-                title: "Discussion Forum",
-                description: "Engage in meaningful conversations with neighbors about community matters.",
-                delay: 0.1
+                icon: Users,
+                title: "Community",
+                description: "Build stronger connections within your residential community.",
+                delay: "100",
               },
               {
-                title: "Real-time Chat",
-                description: "Direct messaging and group chats for quick and efficient communication.",
-                delay: 0.2
+                icon: MessageSquare,
+                title: "Communication",
+                description: "Stay connected with real-time messaging and announcements.",
+                delay: "200",
               },
               {
-                title: "Document Storage",
-                description: "Securely access and share important building documents and information.",
-                delay: 0.3
-              }
+                icon: FileText,
+                title: "Documentation",
+                description: "Keep all important documents organized and accessible.",
+                delay: "300",
+              },
             ].map((feature, index) => (
-              <div 
+              <Card 
                 key={index} 
-                className="bg-background rounded-xl p-6 shadow-sm border border-border/50 hover:shadow-md transition-all duration-300"
+                className={`glass hover:scale-105 transition-transform duration-300 ${showAnimations ? 'animate-fade-in' : ''}`}
+                style={{ animationDelay: showAnimations ? `${feature.delay}ms` : '0ms' }}
               >
-                <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center mb-4">
-                  <span className="text-primary font-bold">{index + 1}</span>
-                </div>
-                <h3 className="text-xl font-semibold mb-3">{feature.title}</h3>
-                <p className="text-muted-foreground">{feature.description}</p>
-              </div>
+                <CardHeader>
+                  <feature.icon className="h-8 w-8 text-primary mb-2" />
+                  <CardTitle>{feature.title}</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <CardDescription>{feature.description}</CardDescription>
+                </CardContent>
+              </Card>
             ))}
           </div>
         </div>
       </section>
-      
+
       {/* CTA Section */}
       <section className="py-16">
         <div className="container mx-auto px-4 max-w-4xl">
-          <div className="bg-gradient-to-r from-primary/10 to-primary/5 rounded-2xl p-8 md:p-12 text-center">
+          <div className={`glass rounded-2xl p-8 md:p-12 text-center ${showAnimations ? 'animate-scale-in' : ''}`}>
             <h2 className="text-3xl font-bold mb-4">Ready to connect with your community?</h2>
             <p className="text-muted-foreground mb-8 max-w-xl mx-auto">
               Join Block-connect today and be part of a more connected, informed, and engaged residential community.
             </p>
             <div className="flex flex-col sm:flex-row justify-center gap-4">
-              {loading ? (
-                <div className="w-full sm:w-auto">
-                  <Button size="lg" disabled className="w-full">
-                    Loading...
-                  </Button>
-                </div>
-              ) : isAuthenticated ? (
-                <Link to="/dashboard">
-                  <Button size="lg" className="w-full sm:w-auto">
-                    Go to Dashboard
-                  </Button>
-                </Link>
-              ) : (
-                <>
-                  <Link to="/register">
-                    <Button size="lg" className="w-full sm:w-auto">
-                      Get Started
-                    </Button>
-                  </Link>
-                  <Link to="/login">
-                    <Button size="lg" variant="outline" className="w-full sm:w-auto">
-                      I already have an account
-                    </Button>
-                  </Link>
-                </>
-              )}
+              <div className={`button-container ${showAnimations ? 'animate' : ''}`}>
+                {renderButtons()}
+              </div>
             </div>
           </div>
         </div>
