@@ -1,4 +1,3 @@
-
 import React, { createContext, useState, useContext, useEffect, ReactNode } from 'react';
 import { toast } from "sonner";
 
@@ -72,11 +71,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   // Initialize auth state on component mount
   useEffect(() => {
-    const storedUser = localStorage.getItem('blockconnect_user');
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
-    }
-    setLoading(false);
+    const initializeAuth = async () => {
+      const storedUser = localStorage.getItem('blockconnect_user');
+      if (storedUser) {
+        setUser(JSON.parse(storedUser));
+      }
+      // Add a small delay to prevent flashing
+      await new Promise(resolve => setTimeout(resolve, 500));
+      setLoading(false);
+    };
+
+    initializeAuth();
   }, []);
 
   // Mock login function (would connect to backend in production)

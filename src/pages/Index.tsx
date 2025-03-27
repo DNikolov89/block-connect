@@ -1,11 +1,10 @@
-
 import React from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
 
 const Index = () => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, loading } = useAuth();
   
   return (
     <div className="min-h-screen bg-background">
@@ -17,14 +16,20 @@ const Index = () => {
             <div className="bg-primary mx-auto rounded-2xl h-20 w-20 flex items-center justify-center text-white text-3xl font-bold mb-8 shadow-lg animate-float">
               B
             </div>
-            <h1 className="text-4xl md:text-6xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary to-primary/80 mb-6 animate-fade-in">
+            <h1 className="text-4xl md:text-6xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary to-primary/80 mb-6">
               Welcome to Block-connect
             </h1>
-            <p className="text-xl text-muted-foreground mb-8 animate-fade-in opacity-0" style={{ animationDelay: '0.2s' }}>
+            <p className="text-xl text-muted-foreground mb-8">
               The digital hub for your residential community. Connect, communicate, and collaborate with neighbors and building management in one seamless platform.
             </p>
-            <div className="flex flex-col sm:flex-row justify-center gap-4 animate-fade-in opacity-0" style={{ animationDelay: '0.4s' }}>
-              {isAuthenticated ? (
+            <div className="flex flex-col sm:flex-row justify-center gap-4">
+              {loading ? (
+                <div className="w-full sm:w-auto">
+                  <Button size="lg" disabled className="w-full">
+                    Loading...
+                  </Button>
+                </div>
+              ) : isAuthenticated ? (
                 <Link to="/dashboard">
                   <Button size="lg" className="w-full sm:w-auto">
                     Go to Dashboard
@@ -78,8 +83,7 @@ const Index = () => {
             ].map((feature, index) => (
               <div 
                 key={index} 
-                className="bg-background rounded-xl p-6 shadow-sm border border-border/50 hover:shadow-md transition-all duration-300 animate-fade-in opacity-0"
-                style={{ animationDelay: `${feature.delay + 0.5}s` }}
+                className="bg-background rounded-xl p-6 shadow-sm border border-border/50 hover:shadow-md transition-all duration-300"
               >
                 <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center mb-4">
                   <span className="text-primary font-bold">{index + 1}</span>
@@ -101,7 +105,13 @@ const Index = () => {
               Join Block-connect today and be part of a more connected, informed, and engaged residential community.
             </p>
             <div className="flex flex-col sm:flex-row justify-center gap-4">
-              {isAuthenticated ? (
+              {loading ? (
+                <div className="w-full sm:w-auto">
+                  <Button size="lg" disabled className="w-full">
+                    Loading...
+                  </Button>
+                </div>
+              ) : isAuthenticated ? (
                 <Link to="/dashboard">
                   <Button size="lg" className="w-full sm:w-auto">
                     Go to Dashboard
