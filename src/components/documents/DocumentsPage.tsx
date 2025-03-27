@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
@@ -13,7 +12,6 @@ import {
   Download,
   Eye,
   File,
-  FilePdf,
   FileText,
   Filter,
   Image,
@@ -54,7 +52,6 @@ interface Document {
   description?: string;
 }
 
-// Mock documents
 const documentsList: Document[] = [
   {
     id: '1',
@@ -170,7 +167,6 @@ const documentsList: Document[] = [
   }
 ];
 
-// Document categories
 const categories = [
   'All Categories',
   'Rules & Regulations',
@@ -196,7 +192,6 @@ const DocumentsPage: React.FC = () => {
   const [documentDescription, setDocumentDescription] = useState('');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   
-  // Filter documents based on search, category, and tab
   const filteredDocuments = documentsList.filter(doc => {
     const matchesSearch = doc.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
                          (doc.description && doc.description.toLowerCase().includes(searchQuery.toLowerCase()));
@@ -222,7 +217,6 @@ const DocumentsPage: React.FC = () => {
       return;
     }
     
-    // In a real app, this would upload the file to a server
     console.log('Uploading document:', {
       title: documentTitle,
       category: documentCategory,
@@ -241,7 +235,7 @@ const DocumentsPage: React.FC = () => {
   const getDocumentIcon = (type: string) => {
     switch (type) {
       case 'pdf':
-        return <FilePdf className="h-10 w-10 text-red-500" />;
+        return <FileText className="h-10 w-10 text-red-500" />;
       case 'image':
         return <Image className="h-10 w-10 text-blue-500" />;
       case 'doc':
@@ -257,19 +251,16 @@ const DocumentsPage: React.FC = () => {
   };
   
   const handleDownload = (document: Document) => {
-    // In a real app, this would download the file
     console.log('Downloading document:', document.name);
     toast.success(`Downloading ${document.name}`);
   };
   
   const handleApprove = (document: Document) => {
-    // In a real app, this would approve the document
     console.log('Approving document:', document.id);
     toast.success(`Document "${document.name}" approved`);
   };
   
   const handleDelete = (document: Document) => {
-    // In a real app, this would delete the document
     console.log('Deleting document:', document.id);
     toast.success(`Document "${document.name}" deleted`);
   };
@@ -364,7 +355,6 @@ const DocumentsPage: React.FC = () => {
       </div>
       
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        {/* Categories sidebar */}
         <div className="md:col-span-1">
           <Card className="h-full">
             <CardHeader>
@@ -407,7 +397,6 @@ const DocumentsPage: React.FC = () => {
           </Card>
         </div>
         
-        {/* Documents section */}
         <div className="md:col-span-3">
           {isAdmin && (
             <Tabs defaultValue="all" className="mb-6" value={activeTab} onValueChange={setActiveTab}>
