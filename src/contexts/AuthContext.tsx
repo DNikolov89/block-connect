@@ -1,5 +1,8 @@
 import React, { createContext, useState, useContext, useEffect, ReactNode } from 'react';
 import { toast } from "sonner";
+import { useQuery, useMutation } from '@tanstack/react-query';
+import { authApi } from '@/api';
+import type { User, UserRole } from '@/types';
 
 // Define user roles
 export type UserRole = 'admin' | 'owner' | 'tenant';
@@ -84,59 +87,83 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     initializeAuth();
   }, []);
 
-  // Mock login function (would connect to backend in production)
+  // Login mutation
+  const loginMutation = useMutation({
+    mutationFn: async ({ email, password }: { email: string; password: string }) => {
+      const response = await authApi.login(email, password);
+      if (response.error) throw new Error(response.error);
+      return response.data;
+    },
+    onSuccess: (data) => {
+      setUser(data);
+      localStorage.setItem('blockconnect_user', JSON.stringify(data));
+      toast.success(`Welcome back, ${data.name}!`);
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Login failed');
+      throw error;
+    },
+  });
+
+  // Register mutation
+  const registerMutation = useMutation({
+    mutationFn: async ({ userData, password, blockCode }: { 
+      userData: Omit<User, 'id'>; 
+      password: string; 
+      blockCode: string;
+    }) => {
+      // Validate block code first
+      if (blockCode !== 'block123') {
+        throw new Error('Invalid block code');
+      }
+
+      const response = await authApi.register(userData, password);
+      if (response.error) throw new Error(response.error);
+      return response.data;
+    },
+    onSuccess: (data) => {
+      setUser(data);
+      localStorage.setItem('blockconnect_user', JSON.stringify(data));
+      toast.success('Registration successful!');
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Registration failed');
+      throw error;
+    },
+  });
+
+  // Logout mutation
+  const logoutMutation = useMutation({
+    mutationFn: async () => {
+      const response = await authApi.logout();
+      if (response.error) throw new Error(response.error);
+    },
+    onSuccess: () => {
+      setUser(null);
+      localStorage.removeItem('blockconnect_user');
+      toast.info('You have been logged out');
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Logout failed');
+      throw error;
+    },
+  });
+
+  // Login function
   const login = async (email: string, password: string) => {
     try {
       setLoading(true);
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      const mockUser = MOCK_USERS.find(u => u.email === email);
-      
-      if (!mockUser) {
-        throw new Error('Invalid credentials');
-      }
-      
-      // Here we would validate password in a real app
-      if (password !== 'password') {
-        throw new Error('Invalid credentials');
-      }
-      
-      setUser(mockUser);
-      localStorage.setItem('blockconnect_user', JSON.stringify(mockUser));
-      toast.success(`Welcome back, ${mockUser.name}!`);
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Login failed');
-      throw error;
+      await loginMutation.mutateAsync({ email, password });
     } finally {
       setLoading(false);
     }
   };
 
-  // Mock register function
+  // Register function
   const register = async (userData: Omit<User, 'id'>, password: string, blockCode: string) => {
     try {
       setLoading(true);
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Validate block code
-      if (blockCode !== 'block123') {
-        throw new Error('Invalid block code');
-      }
-      
-      // Create new user with generated ID
-      const newUser: User = {
-        ...userData,
-        id: Math.random().toString(36).substring(2, 9),
-      };
-      
-      setUser(newUser);
-      localStorage.setItem('blockconnect_user', JSON.stringify(newUser));
-      toast.success('Registration successful!');
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Registration failed');
-      throw error;
+      await registerMutation.mutateAsync({ userData, password, blockCode });
     } finally {
       setLoading(false);
     }
@@ -144,9 +171,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   // Logout function
   const logout = () => {
-    setUser(null);
-    localStorage.removeItem('blockconnect_user');
-    toast.info('You have been logged out');
+    logoutMutation.mutate();
   };
 
   return (
