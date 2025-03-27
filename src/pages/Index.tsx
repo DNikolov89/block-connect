@@ -1,11 +1,14 @@
 import React from 'react';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { ThemeToggle } from '@/components/ThemeToggle';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Building2, Users, MessageSquare, FileText, Plus } from 'lucide-react';
 
 const Index = () => {
   const { isAuthenticated, loading } = useAuth();
+  const navigate = useNavigate();
   
   return (
     <div className="min-h-screen bg-background">
@@ -18,7 +21,19 @@ const Index = () => {
             </div>
             <span className="text-xl font-semibold">Block-connect</span>
           </div>
-          <ThemeToggle />
+          <div className="flex items-center gap-4">
+            {!loading && !isAuthenticated && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => navigate('/register?role=admin')}
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Create Block Space
+              </Button>
+            )}
+            <ThemeToggle />
+          </div>
         </div>
       </header>
 
@@ -51,14 +66,15 @@ const Index = () => {
                 </Link>
               ) : (
                 <>
-                  <Link to="/login">
-                    <Button size="lg" variant="default" className="w-full sm:w-auto">
-                      Sign In
+                  <Link to="/register">
+                    <Button size="lg" className="w-full sm:w-auto">
+                      Get Started
                     </Button>
                   </Link>
-                  <Link to="/register">
+                  <Link to="/register?role=admin">
                     <Button size="lg" variant="outline" className="w-full sm:w-auto">
-                      Register
+                      <Plus className="h-4 w-4 mr-2" />
+                      Create Block Space
                     </Button>
                   </Link>
                 </>
