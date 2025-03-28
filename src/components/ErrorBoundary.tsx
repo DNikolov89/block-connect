@@ -1,9 +1,8 @@
-import React, { Component, ErrorInfo, ReactNode } from 'react';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import React from 'react';
+import { captureError } from '@/lib/monitoring';
 
 interface Props {
-  children: ReactNode;
+  children: React.ReactNode;
 }
 
 interface State {
@@ -11,58 +10,44 @@ interface State {
   error: Error | null;
 }
 
-export class ErrorBoundary extends Component<Props, State> {
-  public state: State = {
-    hasError: false,
-    error: null,
-  };
+class ErrorBoundary extends React.Component<Props, State> {
+  constructor(props: Props) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
 
-  public static getDerivedStateFromError(error: Error): State {
+  static getDerivedStateFromError(error: Error): State {
     return { hasError: true, error };
   }
 
-  public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    console.error('Uncaught error:', error, errorInfo);
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    captureError(error, {
+      componentStack: errorInfo.componentStack,
+    });
   }
 
-  public render() {
+  render() {
     if (this.state.hasError) {
       return (
-        <div className="min-h-screen flex items-center justify-center p-4">
-          <Card className="w-full max-w-md">
-            <CardHeader>
-              <CardTitle className="text-2xl text-destructive">Something went wrong</CardTitle>
-              <CardDescription>
-                We apologize for the inconvenience. Please try refreshing the page.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div className="bg-muted p-4 rounded-lg">
-                  <p className="text-sm font-mono">
-                    {this.state.error?.message || 'An unknown error occurred'}
-                  </p>
-                </div>
-                <Button
-                  onClick={() => window.location.reload()}
-                  className="w-full"
-                >
-                  Refresh Page
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={() => window.location.href = '/'}
-                  className="w-full"
-                >
-                  Go to Homepage
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+        <div className="min-h-screen flex items-center justify-center bg-background">
+          <div className="text-center p-8">
+            <h1 className="text-2xl font-bold text-red-500 mb-4">Something went wrong</h1>
+            <p className="text-muted-foreground mb-4">
+              We apologize for the inconvenience. Please try refreshing the page.
+            </p>
+            <button
+              onClick={() => window.location.reload()}
+              className="bg-primary text-white px-4 py-2 rounded-md hover:bg-primary/90 transition-colors"
+            >
+              Refresh Page
+            </button>
+          </div>
         </div>
       );
     }
 
     return this.props.children;
   }
-} 
+}
+
+export default ErrorBoundary; 

@@ -1,194 +1,116 @@
-import React, { createContext, useState, useContext, useEffect, ReactNode } from 'react';
-import { toast } from "sonner";
-import { useQuery, useMutation } from '@tanstack/react-query';
-import { authApi } from '@/api';
-import type { User, UserRole } from '@/types';
+import React, { createContext, useContext, useEffect, useState } from 'react';
+import { supabase } from '@/lib/supabase';
+import { User } from '@supabase/supabase-js';
+import { identifyUser, resetUser, trackEvent } from '@/lib/monitoring';
 
-// Define user roles
-export type UserRole = 'admin' | 'owner' | 'tenant';
-
-// User type definition
-export interface User {
-  id: string;
-  name: string;
-  email: string;
-  phone?: string;
-  role: UserRole;
-  blockId: string;
-  avatar?: string;
-}
-
-// Mock data for current demo
-const MOCK_USERS: User[] = [
-  {
-    id: '1',
-    name: 'Admin User',
-    email: 'admin@blockconnect.com',
-    phone: '+1234567890',
-    role: 'admin',
-    blockId: 'block123',
-    avatar: 'https://i.pravatar.cc/150?img=1'
-  },
-  {
-    id: '2',
-    name: 'Owner User',
-    email: 'owner@blockconnect.com',
-    phone: '+1234567891',
-    role: 'owner',
-    blockId: 'block123',
-    avatar: 'https://i.pravatar.cc/150?img=2'
-  },
-  {
-    id: '3',
-    name: 'Tenant User',
-    email: 'tenant@blockconnect.com',
-    phone: '+1234567892',
-    role: 'tenant',
-    blockId: 'block123',
-    avatar: 'https://i.pravatar.cc/150?img=3'
-  }
-];
-
-// Interface for the auth context
 interface AuthContextType {
   user: User | null;
   loading: boolean;
-  login: (email: string, password: string) => Promise<void>;
-  register: (userData: Omit<User, 'id'>, password: string, blockCode: string) => Promise<void>;
-  logout: () => void;
   isAuthenticated: boolean;
+  signIn: (email: string, password: string) => Promise<void>;
+  signUp: (email: string, password: string, fullName: string) => Promise<void>;
+  signOut: () => Promise<void>;
 }
 
-// Create the auth context
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Props for the auth provider
-interface AuthProviderProps {
-  children: ReactNode;
-}
-
-// Auth provider component
-export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
+export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Initialize auth state on component mount
   useEffect(() => {
-    const initializeAuth = async () => {
-      const storedUser = localStorage.getItem('blockconnect_user');
-      if (storedUser) {
-        setUser(JSON.parse(storedUser));
+    // Check active sessions and sets the user
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
+      if (session?.user) {
+        identifyUser(session.user.id, {
+          email: session.user.email,
+          role: session.user.user_metadata.role,
+        });
       }
-      // Add a small delay to prevent flashing
-      await new Promise(resolve => setTimeout(resolve, 500));
       setLoading(false);
-    };
+    });
 
-    initializeAuth();
+    // Listen for changes on auth state (logged in, signed out, etc.)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+      if (session?.user) {
+        identifyUser(session.user.id, {
+          email: session.user.email,
+          role: session.user.user_metadata.role,
+        });
+        trackEvent('user_logged_in');
+      } else {
+        resetUser();
+        trackEvent('user_logged_out');
+      }
+      setLoading(false);
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
-  // Login mutation
-  const loginMutation = useMutation({
-    mutationFn: async ({ email, password }: { email: string; password: string }) => {
-      const response = await authApi.login(email, password);
-      if (response.error) throw new Error(response.error);
-      return response.data;
-    },
-    onSuccess: (data) => {
-      setUser(data);
-      localStorage.setItem('blockconnect_user', JSON.stringify(data));
-      toast.success(`Welcome back, ${data.name}!`);
-    },
-    onError: (error: Error) => {
-      toast.error(error.message || 'Login failed');
-      throw error;
-    },
-  });
-
-  // Register mutation
-  const registerMutation = useMutation({
-    mutationFn: async ({ userData, password, blockCode }: { 
-      userData: Omit<User, 'id'>; 
-      password: string; 
-      blockCode: string;
-    }) => {
-      // Validate block code first
-      if (blockCode !== 'block123') {
-        throw new Error('Invalid block code');
-      }
-
-      const response = await authApi.register(userData, password);
-      if (response.error) throw new Error(response.error);
-      return response.data;
-    },
-    onSuccess: (data) => {
-      setUser(data);
-      localStorage.setItem('blockconnect_user', JSON.stringify(data));
-      toast.success('Registration successful!');
-    },
-    onError: (error: Error) => {
-      toast.error(error.message || 'Registration failed');
-      throw error;
-    },
-  });
-
-  // Logout mutation
-  const logoutMutation = useMutation({
-    mutationFn: async () => {
-      const response = await authApi.logout();
-      if (response.error) throw new Error(response.error);
-    },
-    onSuccess: () => {
-      setUser(null);
-      localStorage.removeItem('blockconnect_user');
-      toast.info('You have been logged out');
-    },
-    onError: (error: Error) => {
-      toast.error(error.message || 'Logout failed');
-      throw error;
-    },
-  });
-
-  // Login function
-  const login = async (email: string, password: string) => {
+  const signIn = async (email: string, password: string) => {
     try {
-      setLoading(true);
-      await loginMutation.mutateAsync({ email, password });
-    } finally {
-      setLoading(false);
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+      if (error) throw error;
+      trackEvent('sign_in_success');
+    } catch (error) {
+      trackEvent('sign_in_error', { error: error.message });
+      throw error;
     }
   };
 
-  // Register function
-  const register = async (userData: Omit<User, 'id'>, password: string, blockCode: string) => {
+  const signUp = async (email: string, password: string, fullName: string) => {
     try {
-      setLoading(true);
-      await registerMutation.mutateAsync({ userData, password, blockCode });
-    } finally {
-      setLoading(false);
+      const { error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            full_name: fullName,
+            role: 'tenant', // Default role
+          },
+        },
+      });
+      if (error) throw error;
+      trackEvent('sign_up_success');
+    } catch (error) {
+      trackEvent('sign_up_error', { error: error.message });
+      throw error;
     }
   };
 
-  // Logout function
-  const logout = () => {
-    logoutMutation.mutate();
+  const signOut = async () => {
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+      trackEvent('sign_out_success');
+    } catch (error) {
+      trackEvent('sign_out_error', { error: error.message });
+      throw error;
+    }
   };
 
   return (
-    <AuthContext.Provider value={{ 
-      user, 
-      loading, 
-      login, 
-      register, 
-      logout, 
-      isAuthenticated: !!user 
-    }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        loading,
+        isAuthenticated: !!user,
+        signIn,
+        signUp,
+        signOut,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
 };
 
-// Custom hook to use the auth context
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (context === undefined) {
