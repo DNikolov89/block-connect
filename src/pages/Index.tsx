@@ -22,7 +22,7 @@ const Index = () => {
   }, []);
 
   const renderLogo = () => (
-    <div className={`logo-container ${showAnimations ? 'animate' : ''}`}>
+    <div className={`logo-container flex items-center ${showAnimations ? 'animate' : ''}`}>
       <div className="bg-primary rounded-md h-8 w-8 flex items-center justify-center text-white font-bold mr-2">
         B
       </div>
